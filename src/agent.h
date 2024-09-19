@@ -105,4 +105,6 @@ void agent_init(Agent* agent);
 
 void agent_deinit(Agent* agent);
 
+int agent_create_host_addr(Agent* agent);
+
 #endif  // AGENT_H_

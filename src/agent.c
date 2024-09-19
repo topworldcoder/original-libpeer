@@ -37,7 +37,7 @@ static int agent_create_sockets(Agent* agent) {
   return 0;
 }
 
-static int agent_socket_recv(Agent* agent, Address* addr, uint8_t* buf, int len) {
+static int agent_socket_recv(Agent* agent, Address* addr, uint8_t* buf, int len, int retry) {
   int ret = -1;
   int i = 0;
   int maxfd = 0;
@@ -45,31 +45,43 @@ static int agent_socket_recv(Agent* agent, Address* addr, uint8_t* buf, int len)
   struct timeval tv;
   tv.tv_sec = 0;
   tv.tv_usec = AGENT_POLL_TIMEOUT * 1000;
-  FD_ZERO(&rfds);
 
   for (i = 0; i < 2; i++) {
     if (agent->udp_sockets[i].fd > maxfd) {
       maxfd = agent->udp_sockets[i].fd;
     }
-    if (agent->udp_sockets[i].fd > 0) {
-      FD_SET(agent->udp_sockets[i].fd, &rfds);
-    }
   }
 
-  ret = select(maxfd + 1, &rfds, NULL, NULL, &tv);
-  if (ret < 0) {
-    LOGE("select error");
-  } else if (ret == 0) {
-    // timeout
-  } else {
+  if (retry <= 0)
+    retry = 1;
+
+  while (retry-- > 0 && ret <= 0) {
+    // Clear and set the file descriptor set for select
+    FD_ZERO(&rfds);
     for (i = 0; i < 2; i++) {
-      if (FD_ISSET(agent->udp_sockets[i].fd, &rfds)) {
-        ret = udp_socket_recvfrom(&agent->udp_sockets[i], addr, buf, len);
-        break;
+      if (agent->udp_sockets[i].fd > 0) {
+        FD_SET(agent->udp_sockets[i].fd, &rfds);
+      }
+    }
+
+    ret = select(maxfd + 1, &rfds, NULL, NULL, &tv);
+    if (ret < 0) {
+      // select error
+      LOGE("select error");
+    } else if (ret == 0) {
+      // timeout
+      usleep(tv.tv_usec);
+    } else {
+      // Check which socket has data
+      for (i = 0; i < 2; i++) {
+        if (FD_ISSET(agent->udp_sockets[i].fd, &rfds)) {
+          ret = udp_socket_recvfrom(&agent->udp_sockets[i], addr, buf, len);
+          if (ret > 0)
+            break;
+        }
       }
     }
   }
-
   return ret;
 }
 
@@ -84,7 +96,7 @@ static int agent_socket_send(Agent* agent, Address* addr, const uint8_t* buf, in
   return -1;
 }
 
-static int agent_create_host_addr(Agent* agent) {
+int agent_create_host_addr(Agent* agent) {
   UdpSocket* udp_socket;
 
   udp_socket = &agent->udp_sockets[0];
@@ -107,7 +119,7 @@ static int agent_create_host_addr(Agent* agent) {
 
 static int agent_create_bind_addr(Agent* agent, Address* serv_addr) {
   int ret = -1;
-  int retry = 0;
+  int retry = 1000;
   Address bind_addr;
   StunMessage send_msg;
   StunMessage recv_msg;
@@ -124,12 +136,7 @@ static int agent_create_bind_addr(Agent* agent, Address* serv_addr) {
   }
 
   // blocking 1 second
-  while (retry < 1000) {
-    ret = agent_socket_recv(agent, NULL, recv_msg.buf, sizeof(recv_msg.buf));
-    if (ret > 0) {
-      break;
-    }
-  }
+  ret = agent_socket_recv(agent, NULL, recv_msg.buf, sizeof(recv_msg.buf), retry);
 
   if (ret <= 0) {
     LOGD("Failed to receive STUN Binding Response.");
@@ -146,7 +153,7 @@ static int agent_create_bind_addr(Agent* agent, Address* serv_addr) {
 static int agent_create_turn_addr(Agent* agent, Address* serv_addr, const char* username, const char* credential) {
   int ret = -1;
   uint32_t attr = ntohl(0x11000000);
-  int retry = 0;
+  int retry = 1000;
   Address turn_addr;
   StunMessage send_msg;
   StunMessage recv_msg;
@@ -163,15 +170,10 @@ static int agent_create_turn_addr(Agent* agent, Address* serv_addr, const char* 
   }
 
   // blocking 1 second
-  while (retry < 1000) {
-    ret = agent_socket_recv(agent, NULL, recv_msg.buf, sizeof(recv_msg.buf));
-    if (ret > 0) {
-      break;
-    }
-  }
+  ret = agent_socket_recv(agent, NULL, recv_msg.buf, sizeof(recv_msg.buf), retry);
 
   if (ret <= 0) {
-    LOGD("Failed to receive STUN Binding Response.");
+    LOGD("Failed to receive TURN Binding Response.");
     return ret;
   }
 
@@ -197,7 +199,7 @@ static int agent_create_turn_addr(Agent* agent, Address* serv_addr, const char* 
   }
 
   memset(&recv_msg, 0, sizeof(recv_msg));
-  ret = agent_socket_recv(agent, NULL, recv_msg.buf, sizeof(recv_msg.buf));
+  ret = agent_socket_recv(agent, NULL, recv_msg.buf, sizeof(recv_msg.buf), retry);
   if (ret <= 0) {
     LOGD("Failed to receive TURN Binding Response.");
     return ret;
@@ -214,9 +216,24 @@ void agent_init(Agent* agent) {
   agent->local_candidates_count = 0;
 }
 
+void agent_socket_destroy(Agent* agent) {
+  if (agent->udp_sockets[0].fd > 0) {
+    udp_socket_close(&agent->udp_sockets[0]);
+    agent->udp_sockets[0].fd = 0;
+  }
+
+#if CONFIG_IPV6
+  if (agent->udp_sockets[1].fd > 0) {
+    udp_socket_close(&agent->udp_sockets[1]);
+    agent->udp_sockets[1].fd = 0;
+  }
+#endif
+}
+
 void agent_deinit(Agent* agent) {
-  udp_socket_close(&agent->udp_socket);
+  agent_socket_destroy(agent);
   memset(agent, 0, sizeof(Agent));
+  agent_create_sockets(agent);
 }
 
 /*
@@ -234,10 +251,6 @@ void agent_gather_candidate(Agent* agent, const char* urls, const char* username
   int addr_type[1] = {AF_INET};  // ipv6 no need stun
   Address resolved_addr;
   memset(hostname, 0, sizeof(hostname));
-  memset(agent, 0, sizeof(Agent));
-  agent_create_sockets(agent);
-
-  agent_create_host_addr(agent);
 
   do {
     if ((pos = strstr(urls + 5, ":")) == NULL) {
@@ -362,7 +375,7 @@ int agent_recv(Agent* agent, uint8_t* buf, int len) {
   int ret = -1;
   StunMessage stun_msg;
   Address addr;
-  if ((ret = agent_socket_recv(agent, &addr, buf, len)) > 0 && stun_probe(buf, len) == 0) {
+  if ((ret = agent_socket_recv(agent, &addr, buf, len, 1)) > 0 && stun_probe(buf, len) == 0) {
     memcpy(stun_msg.buf, buf, ret);
     stun_msg.size = ret;
     stun_parse_msg_buf(&stun_msg);

@@ -268,6 +268,8 @@ static void peer_connection_state_new(PeerConnection* pc, DtlsSrtpRole role) {
 
   pc->sctp.connected = 0;
 
+  agent_create_host_addr(&pc->agent);
+
   for (int i = 0; i < sizeof(pc->config.ice_servers) / sizeof(pc->config.ice_servers[0]); ++i) {
     if (pc->config.ice_servers[i].urls) {
       LOGI("ice_servers: %s", pc->config.ice_servers[i].urls);
