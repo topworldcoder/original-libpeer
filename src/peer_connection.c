@@ -37,7 +37,7 @@ struct PeerConnection {
 
   uint8_t temp_buf[CONFIG_MTU];
   uint8_t agent_buf[CONFIG_MTU];
-  int agent_ret;
+  size_t agent_ret;
   int b_local_description_created;
 
   Buffer* audio_rb;
