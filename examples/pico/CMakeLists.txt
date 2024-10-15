@@ -68,10 +68,10 @@ target_link_libraries(srtp
 
 add_custom_command(TARGET srtp
   POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/srtp2/
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/srtp3/
   COMMAND ${CMAKE_COMMAND} -E copy
   ../../../third_party/libsrtp/include/srtp.h
-  ${CMAKE_BINARY_DIR}/srtp2/
+  ${CMAKE_BINARY_DIR}/srtp3/
 )
 
 # Build cJSON

@@ -29,7 +29,7 @@ include_directories(${CMAKE_BINARY_DIR}/dist/include ${CMAKE_BINARY_DIR}/dist/in
 
 link_directories(${CMAKE_BINARY_DIR}/dist/lib)
 
-set(DEP_LIBS "srtp2" "usrsctp" "mbedtls" "mbedcrypto" "mbedx509" "cjson")
+set(DEP_LIBS "srtp3" "usrsctp" "mbedtls" "mbedcrypto" "mbedx509" "cjson")
 # Extended debug information (symbols, source code, and macro definitions)
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g3")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g3")
@@ -89,7 +89,7 @@ file(READ ${CMAKE_CURRENT_SOURCE_DIR}/third_party/mbedtls/include/mbedtls/mbedtl
 string(REPLACE "//#define MBEDTLS_SSL_DTLS_SRTP" "#define MBEDTLS_SSL_DTLS_SRTP" MODIFIED_CONTENT ${INPUT_CONTENT})
 file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/mbedtls/include/mbedtls/mbedtls_config.h ${MODIFIED_CONTENT})
 
-ExternalProject_Add(srtp2
+ExternalProject_Add(srtp3
   SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/libsrtp
   CMAKE_ARGS
     -DCMAKE_C_FLAGS="-fPIC"
