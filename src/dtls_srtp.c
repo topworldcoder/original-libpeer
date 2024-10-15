@@ -486,18 +486,24 @@ int dtls_srtp_probe(uint8_t* buf) {
   return (buf[0] == 0x17);
 }
 
-void dtls_srtp_decrypt_rtp_packet(DtlsSrtp* dtls_srtp, uint8_t* packet, int* bytes) {
-  srtp_unprotect(dtls_srtp->srtp_in, packet, bytes);
+void dtls_srtp_decrypt_rtp_packet(DtlsSrtp* dtls_srtp, uint8_t* packet, size_t* bytes) {
+  size_t packet_len = *bytes;
+  srtp_unprotect(dtls_srtp->srtp_in, packet, packet_len, packet, bytes);
 }
 
-void dtls_srtp_decrypt_rtcp_packet(DtlsSrtp* dtls_srtp, uint8_t* packet, int* bytes) {
-  srtp_unprotect_rtcp(dtls_srtp->srtp_in, packet, bytes);
+void dtls_srtp_decrypt_rtcp_packet(DtlsSrtp* dtls_srtp, uint8_t* packet, size_t* bytes) {
+  size_t packet_len = *bytes;
+  srtp_unprotect_rtcp(dtls_srtp->srtp_in, packet, packet_len, packet, bytes);
 }
 
-void dtls_srtp_encrypt_rtp_packet(DtlsSrtp* dtls_srtp, uint8_t* packet, int* bytes) {
-  srtp_protect(dtls_srtp->srtp_out, packet, bytes);
+void dtls_srtp_encrypt_rtp_packet(DtlsSrtp* dtls_srtp, uint8_t* packet, size_t* bytes) {
+  size_t packet_len = *bytes;
+	*bytes = *bytes + SRTP_MAX_TRAILER_LEN;
+  srtp_protect(dtls_srtp->srtp_out, packet, packet_len, packet, bytes, 0);
 }
 
-void dtls_srtp_encrypt_rctp_packet(DtlsSrtp* dtls_srtp, uint8_t* packet, int* bytes) {
-  srtp_protect_rtcp(dtls_srtp->srtp_out, packet, bytes);
+void dtls_srtp_encrypt_rctp_packet(DtlsSrtp* dtls_srtp, uint8_t* packet, size_t* bytes) {
+  size_t packet_len = *bytes;
+	*bytes = *bytes + SRTP_MAX_SRTCP_TRAILER_LEN;
+  srtp_protect_rtcp(dtls_srtp->srtp_out, packet, packet_len, packet, bytes, 0);
 }

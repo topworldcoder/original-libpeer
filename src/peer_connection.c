@@ -37,7 +37,7 @@ struct PeerConnection {
 
   uint8_t temp_buf[CONFIG_MTU];
   uint8_t agent_buf[CONFIG_MTU];
-  int agent_ret;
+  size_t agent_ret;
   int b_local_description_created;
 
   Buffer* audio_rb;
@@ -55,7 +55,7 @@ struct PeerConnection {
 
 static void peer_connection_outgoing_rtp_packet(uint8_t* data, size_t size, void* user_data) {
   PeerConnection* pc = (PeerConnection*)user_data;
-  dtls_srtp_encrypt_rtp_packet(&pc->dtls_srtp, data, (int*)&size);
+  dtls_srtp_encrypt_rtp_packet(&pc->dtls_srtp, data, &size);
   agent_send(&pc->agent, data, size);
 }
 
