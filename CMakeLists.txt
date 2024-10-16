@@ -69,6 +69,7 @@ endif()
 ExternalProject_Add(cjson
   SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/cJSON
   CMAKE_ARGS
+    -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_C_FLAGS="-fPIC"
     -DBUILD_SHARED_LIBS=off
     -DENABLE_CJSON_TEST=off
@@ -79,6 +80,7 @@ ExternalProject_Add(cjson
 ExternalProject_Add(mbedtls
   SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/mbedtls
   CMAKE_ARGS
+    -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_C_FLAGS="-fPIC"
     -DENABLE_TESTING=off
     -DENABLE_PROGRAMS=off
@@ -92,6 +94,7 @@ file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/mbedtls/include/mbedtls/mbedt
 ExternalProject_Add(srtp3
   SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/libsrtp
   CMAKE_ARGS
+    -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_C_FLAGS="-fPIC"
     -DTEST_APPS=off
     -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dist
@@ -101,6 +104,7 @@ ExternalProject_Add(srtp3
 ExternalProject_Add(usrsctp
   SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/usrsctp
   CMAKE_ARGS
+    -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_C_FLAGS="-fPIC"
     -Dsctp_build_programs=off
     -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dist
